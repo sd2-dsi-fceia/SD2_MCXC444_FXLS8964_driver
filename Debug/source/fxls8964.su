@@ -1,0 +1,13 @@
+C:\Users\guido\Documents\MCUXpressoIDE_24.12.148\workspace\frdmmcxc444_i2c_read_fxls897x_accel_value_transfer\CMSIS/core_cm0plus.h:757:22:__NVIC_EnableIRQ	16	static
+C:\Users\guido\Documents\MCUXpressoIDE_24.12.148\workspace\frdmmcxc444_i2c_read_fxls897x_accel_value_transfer\CMSIS/core_cm0plus.h:866:22:__NVIC_SetPriority	24	static
+C:\Users\guido\Documents\MCUXpressoIDE_24.12.148\workspace\frdmmcxc444_i2c_read_fxls897x_accel_value_transfer\drivers/fsl_clock.h:437:20:CLOCK_EnableClock	24	static
+C:\Users\guido\Documents\MCUXpressoIDE_24.12.148\workspace\frdmmcxc444_i2c_read_fxls897x_accel_value_transfer\drivers/fsl_port.h:360:20:PORT_SetPinConfig	32	static
+C:\Users\guido\Documents\MCUXpressoIDE_24.12.148\workspace\frdmmcxc444_i2c_read_fxls897x_accel_value_transfer\drivers/fsl_port.h:532:20:PORT_SetPinInterruptConfig	24	static
+C:\Users\guido\Documents\MCUXpressoIDE_24.12.148\workspace\frdmmcxc444_i2c_read_fxls897x_accel_value_transfer\drivers/fsl_port.h:609:20:PORT_ClearPinsInterruptFlags	16	static
+../source/fxls8964.c:319:16:fxls8964_read_reg	56	static
+../source/fxls8964.c:338:13:fxls8964_write_reg	48	static
+../source/fxls8964.c:361:13:config_port_int1	16	static
+../source/fxls8964.c:395:6:fxls8964_init	40	static
+../source/fxls8964.c:448:6:fxls8964_setDataRate	48	static
+../source/fxls8964.c:472:9:fxls8964_getAcX	8	static
+../source/fxls8964.c:477:6:PORTC_PORTD_IRQHandler	24	static

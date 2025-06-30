@@ -1,0 +1,6 @@
+C:\Users\guido\Documents\MCUXpressoIDE_24.12.148\workspace\frdmmcxc444_i2c_read_fxls897x_accel_value_transfer\drivers/fsl_clock.h:437:20:CLOCK_EnableClock	24	static
+C:\Users\guido\Documents\MCUXpressoIDE_24.12.148\workspace\frdmmcxc444_i2c_read_fxls897x_accel_value_transfer\drivers/fsl_gpio.h:345:20:GPIO_PinWrite	24	static
+C:\Users\guido\Documents\MCUXpressoIDE_24.12.148\workspace\frdmmcxc444_i2c_read_fxls897x_accel_value_transfer\drivers/fsl_port.h:360:20:PORT_SetPinConfig	32	static
+../board/hardware_init.c:19:6:BOARD_InitHardware	8	static
+../board/hardware_init.c:28:13:i2c_release_bus_delay	16	static
+../board/hardware_init.c:37:6:BOARD_I2C_ReleaseBus	16	static
