@@ -84,6 +84,7 @@ i2c_master_handle_t g_m_handle;
 uint8_t g_accel_addr_found   = 0x00U;
 volatile bool completionFlag = false;
 volatile bool nakFlag        = false;
+uint32_t trash = 0;
 
 /*******************************************************************************
  * Code
@@ -358,10 +359,16 @@ int main(void)
     */
 
     int16_t accX;
-    fxls8964_init();
+    fxls8964_init_freefall();
+    fxls8964_setFreefallMode();
+
     while (1)
     {
-    	accX = fxls8964_getAcX();
-    	PRINTF("%d", accX);
+    	// accX = fxls8964_getAcX();
+    	// PRINTF("%d", accX);
+    	if(fxls8964_getFreeFall())
+    	{
+    		trash = 1;
+    	}
     }
 }

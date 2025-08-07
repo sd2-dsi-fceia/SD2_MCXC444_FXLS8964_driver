@@ -37,6 +37,7 @@
 
 /*==================[inclusions]=============================================*/
 #include "stdint.h"
+#include "stdbool.h"
 
 /*==================[cplusplus]==============================================*/
 #ifdef __cplusplus
@@ -71,18 +72,30 @@ typedef enum
 
 /*==================[external functions definition]==========================*/
 
-/** \brief configura acelerómetro FXLS8964
+/** \brief configura acelerometro FXLS8964
  **	
  **/
 void fxls8964_init(void);
 
-/** \brief Lee lectura del aceler�metro en el eje X
+void fxls8964_init_freefall(void);
+
+/** \brief Lee lectura del acelerometro en el eje X
  **
- ** \return Lectura del aceler�metro en cent�cimas de g
+ ** \return Lectura del acelerometro en centecimas de g
  **/
 int16_t fxls8964_getAcX(void);
 
+int16_t fxls8964_getAcY(void);
+
+int16_t fxls8964_getAcZ(void);
+
 void fxls8964_setDataRate(DR_enum rate);
+
+void fxls8964_setDataReadyMode(void);
+
+void fxls8964_setFreefallMode(void);
+
+bool fxls8964_getFreeFall(void);
 
 /*==================[cplusplus]==============================================*/
 #ifdef __cplusplus

@@ -314,6 +314,7 @@ typedef union {
 
 static int16_t readX, readY, readZ;
 static volatile bool booted = false;
+static bool freeFallFlag = false;
 
 /*==================[internal functions declaration]=========================*/
 static uint8_t fxls8964_read_reg(uint8_t addr)
@@ -392,6 +393,7 @@ static void config_port_int1(void)
 }
 
 /*==================[external functions definition]==========================*/
+
 void fxls8964_init(void)
 {
 	SENS_CONFIG1_t sens_config_1_reg;
@@ -411,6 +413,11 @@ void fxls8964_init(void)
     // Esperar a que se complete el reset
     while(!booted);
 
+	// Salgo de modo active
+	sens_config_1_reg.data = fxls8964_read_reg(FXLS8964_SENS_CONFIG1_REG);
+	sens_config_1_reg.bits.ACTIVE = 0;
+    fxls8964_write_reg(FXLS8964_SENS_CONFIG1_REG, sens_config_1_reg.data);
+
     // Config register 1
     sens_config_1_reg.data = 0;
     sens_config_1_reg.bits.FSR = 0b00; // +-2g full-scale
@@ -429,15 +436,110 @@ void fxls8964_init(void)
     sens_config_4_reg.bits.INT_PP_OD = 0; // Pines de interrupción push-pull
     fxls8964_write_reg(FXLS8964_SENS_CONFIG4_REG, sens_config_4_reg.data);
 
-    // Data ready and boot interrupt enable
-    sens_config_1_reg.data = 0;
+    // Data ready interrupt enable and boot interrupt disable
+    int_en_reg.data = 0;
     int_en_reg.bits.DRDY_EN = 1;
-    int_en_reg.bits.BOOT_DIS = 0;
+    int_en_reg.bits.BOOT_DIS = 1;
 	fxls8964_write_reg(FXLS8964_INT_EN_REG, int_en_reg.data);
 
 	// Interrupciones ruteadas a INT1
 	int_pin_sel_reg.data = 0;
 	fxls8964_write_reg(FXLS8964_INT_PIN_SEL_REG, int_pin_sel_reg.data);
+
+	// Paso a modo active
+	sens_config_1_reg.data = fxls8964_read_reg(FXLS8964_SENS_CONFIG1_REG);
+	sens_config_1_reg.bits.ACTIVE = 1;
+    fxls8964_write_reg(FXLS8964_SENS_CONFIG1_REG, sens_config_1_reg.data);
+}
+
+void fxls8964_init_freefall(void)
+{
+	SENS_CONFIG1_t sens_config_1_reg;
+	SENS_CONFIG3_t sens_config_3_reg;
+	SENS_CONFIG4_t sens_config_4_reg;
+	INT_EN_t int_en_reg;
+	INT_PIN_SEL_t int_pin_sel_reg;
+	SDCD_CONFIG1_t sdcd_config1_reg;
+	SDCD_CONFIG2_t sdcd_config2_reg;
+
+	// GPIO INT1 config
+	config_port_int1();
+
+    // Software reset
+    sens_config_1_reg.data = 0;
+    sens_config_1_reg.bits.RST = 1;
+    fxls8964_write_reg(FXLS8964_SENS_CONFIG1_REG, sens_config_1_reg.data);
+
+    // Esperar a que se complete el reset
+    while(!booted);
+
+	// Salgo de modo active
+	sens_config_1_reg.data = fxls8964_read_reg(FXLS8964_SENS_CONFIG1_REG);
+	sens_config_1_reg.bits.ACTIVE = 0;
+    fxls8964_write_reg(FXLS8964_SENS_CONFIG1_REG, sens_config_1_reg.data);
+
+    // Config register 1
+    sens_config_1_reg.data = 0;
+    sens_config_1_reg.bits.FSR = 0b00; // +-2g full-scale
+    fxls8964_write_reg(FXLS8964_SENS_CONFIG1_REG, sens_config_1_reg.data);
+
+    // Config register 3
+    sens_config_3_reg.data = 0;
+    sens_config_3_reg.bits.WAKE_ODR = DR_100hz;  // Wake up mode output data rate
+    sens_config_3_reg.bits.SLEEP_ODR = DR_100hz; // Sleep mode output data rate
+    fxls8964_write_reg(FXLS8964_SENS_CONFIG3_REG, sens_config_3_reg.data);
+
+    // Config register 4
+    sens_config_4_reg.data = 0;
+    sens_config_4_reg.bits.DRDY_PUL = 0;  // Interrupciones por DRDY active high/low (no pulsos)
+    sens_config_4_reg.bits.INT_POL = 1;   // Interrupciones active high
+    sens_config_4_reg.bits.INT_PP_OD = 0; // Pines de interrupción push-pull
+    fxls8964_write_reg(FXLS8964_SENS_CONFIG4_REG, sens_config_4_reg.data);
+
+    // Data ready interrupt enable and boot interrupt disable
+    int_en_reg.data = 0;
+    int_en_reg.bits.DRDY_EN = 1;
+    int_en_reg.bits.BOOT_DIS = 1;
+	fxls8964_write_reg(FXLS8964_INT_EN_REG, int_en_reg.data);
+
+	// Interrupciones ruteadas a INT1
+	int_pin_sel_reg.data = 0;
+	fxls8964_write_reg(FXLS8964_INT_PIN_SEL_REG, int_pin_sel_reg.data);
+
+	/* Frefall configuration begin */
+
+	// SDCD Lower Threshold
+	float threshold = 0.2;
+	int16_t threshold_register = 0;
+	threshold_register = (int16_t)((float)(4096.0 * -threshold / 4.0));
+	fxls8964_write_reg(FXLS8964_SDCD_LTHS_LSB_REG, threshold_register & 0xFF);
+	fxls8964_write_reg(FXLS8964_SDCD_LTHS_MSB_REG, (threshold_register >> 8) & 0xF);
+
+	// SDCD Upper Threshold
+	threshold_register = (int16_t)((float)(4096.0 * threshold / 4.0));
+	fxls8964_write_reg(FXLS8964_SDCD_UTHS_LSB_REG, threshold_register & 0xFF);
+	fxls8964_write_reg(FXLS8964_SDCD_UTHS_MSB_REG, (threshold_register >> 8) & 0xF);
+
+	// Debounce counter
+	fxls8964_write_reg(FXLS8964_SDCD_WT_DBCNT_REG, 10);
+
+	// SDCD config 1
+	sdcd_config1_reg.data = 0;
+	sdcd_config1_reg.bits.X_WT_EN = 1;
+	sdcd_config1_reg.bits.Y_WT_EN = 1;
+	sdcd_config1_reg.bits.Z_WT_EN = 1;
+	sdcd_config1_reg.bits.WT_ELE = 1;
+	fxls8964_write_reg(FXLS8964_SDCD_CONFIG1_REG, sdcd_config1_reg.data);
+
+	// SDCD config 2
+	sdcd_config2_reg.data = 0;
+	sdcd_config2_reg.bits.WT_DBCTM = 1;    // Debounce counter cleared on false condition
+	sdcd_config2_reg.bits.WT_LOG_SEL = 0;  // Logical AND
+	sdcd_config2_reg.bits.REF_UPDM = 0b11; // Absolute reference mode
+	sdcd_config2_reg.bits.SDCD_EN = 1;     // Enable SDCD function
+	fxls8964_write_reg(FXLS8964_SDCD_CONFIG2_REG, sdcd_config2_reg.data);
+
+	/* Frefall configuration end */
 
 	// Paso a modo active
 	sens_config_1_reg.data = fxls8964_read_reg(FXLS8964_SENS_CONFIG1_REG);
@@ -469,15 +571,85 @@ void fxls8964_setDataRate(DR_enum rate)
     fxls8964_write_reg(FXLS8964_SENS_CONFIG1_REG, sens_config_1_reg.data);
 }
 
+void fxls8964_setDataReadyMode(void)
+{
+	SENS_CONFIG1_t sens_config_1_reg;
+	INT_EN_t int_en_reg;
+	bool estAct;
+
+	// Salgo de modo active
+	sens_config_1_reg.data = fxls8964_read_reg(FXLS8964_SENS_CONFIG1_REG);
+	estAct = sens_config_1_reg.bits.ACTIVE; 	// Guardo el valor que tenía active
+	sens_config_1_reg.bits.ACTIVE = 0;
+    fxls8964_write_reg(FXLS8964_SENS_CONFIG1_REG, sens_config_1_reg.data);
+
+    // Configure interruptions enable register
+    int_en_reg.data = fxls8964_read_reg(FXLS8964_INT_EN_REG);
+    int_en_reg.bits.DRDY_EN = 1;
+    int_en_reg.bits.SDCD_WT_EN = 0;
+    fxls8964_write_reg(FXLS8964_INT_EN_REG, int_en_reg.data);
+
+	// Restauro el modo
+	sens_config_1_reg.bits.ACTIVE = estAct;
+    fxls8964_write_reg(FXLS8964_SENS_CONFIG1_REG, sens_config_1_reg.data);
+}
+
+void fxls8964_setFreefallMode(void)
+{
+	SENS_CONFIG1_t sens_config_1_reg;
+	INT_EN_t int_en_reg;
+	bool estAct;
+
+	// Salgo de modo active
+	sens_config_1_reg.data = fxls8964_read_reg(FXLS8964_SENS_CONFIG1_REG);
+	estAct = sens_config_1_reg.bits.ACTIVE; 	// Guardo el valor que tenía active
+	sens_config_1_reg.bits.ACTIVE = 0;
+    fxls8964_write_reg(FXLS8964_SENS_CONFIG1_REG, sens_config_1_reg.data);
+
+    // Configure interruptions enable register
+    int_en_reg.data = fxls8964_read_reg(FXLS8964_INT_EN_REG);
+    int_en_reg.bits.DRDY_EN = 0;
+    int_en_reg.bits.SDCD_WT_EN = 1;
+    fxls8964_write_reg(FXLS8964_INT_EN_REG, int_en_reg.data);
+
+    // Restauro el modo
+	sens_config_1_reg.bits.ACTIVE = estAct;
+    fxls8964_write_reg(FXLS8964_SENS_CONFIG1_REG, sens_config_1_reg.data);
+}
+
+bool fxls8964_getFreeFall(void)
+{
+	bool ret = false;
+
+	if(freeFallFlag)
+	{
+		freeFallFlag = false;
+		ret = true;
+	}
+
+	return ret;
+}
+
 int16_t fxls8964_getAcX(void)
 {
 	return (int16_t)(((int32_t)readX * 100 * 4) / (int32_t)4096);
+}
+
+int16_t fxls8964_getAcY(void)
+{
+	return (int16_t)(((int32_t)readY * 100 * 4) / (int32_t)4096);
+}
+
+int16_t fxls8964_getAcZ(void)
+{
+	return (int16_t)(((int32_t)readZ * 100 * 4) / (int32_t)4096);
 }
 
 void PORTC_PORTD_IRQHandler(void)
 {
     int16_t readG;
     INT_STATUS_t intStatus;
+    SDCD_INT_SRC2_t sdcdIntSrc;
     uint32_t time_us;
     uint8_t reg;
 
@@ -509,6 +681,15 @@ void PORTC_PORTD_IRQHandler(void)
     else if(intStatus.bits.SRC_BOOT)
     {
     	booted = true;
+    }
+    else if(intStatus.bits.SRC_SDCD_WT)
+    {
+    	sdcdIntSrc.data = fxls8964_read_reg(FXLS8964_SDCD_INT_SRC2_REG);
+
+    	if(sdcdIntSrc.bits.WT_EA)
+    	{
+        	freeFallFlag = true;
+    	}
     }
 
     PORT_ClearPinsInterruptFlags(INT1_PORT, 1 << INT1_PIN);
