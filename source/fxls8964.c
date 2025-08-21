@@ -1,8 +1,45 @@
+/* Copyright 2025, DSI FCEIA UNR - Sistemas Digitales 2
+ *    DSI: http://www.dsi.fceia.unr.edu.ar/
+ * Copyright 2025, Guido Cicconi
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ */
+
+/*==================[inclusions]=============================================*/
+
 #include "fxls8964.h"
 #include "fsl_i2c.h"
 #include "fsl_port.h"
 #include "fsl_gpio.h"
 #include "fsl_clock.h"
+
+/*==================[macros and definitions]=================================*/
 
 #define FXLS8964_I2C_ADDRESS 0x18
 
@@ -317,6 +354,7 @@ static volatile bool booted = false;
 static bool freeFallFlag = false;
 
 /*==================[internal functions declaration]=========================*/
+
 static uint8_t fxls8964_read_reg(uint8_t addr)
 {
 	i2c_master_transfer_t masterXfer;
@@ -386,7 +424,7 @@ static void config_port_int1(void)
 
 	/* Interrupt polarity active high, or active low. Default value: 1.
 	   0: Active low; 1: Active high. */
-	PORT_SetPinInterruptConfig(INT1_PORT, INT1_PIN, kPORT_InterruptLogicOne);
+	PORT_SetPinInterruptConfig(INT1_PORT, INT1_PIN, kPORT_InterruptRisingEdge);
 
 	NVIC_EnableIRQ(PORTC_PORTD_IRQn);
 	NVIC_SetPriority(PORTC_PORTD_IRQn, 0);
@@ -425,8 +463,8 @@ void fxls8964_init(void)
 
     // Config register 3
     sens_config_3_reg.data = 0;
-    sens_config_3_reg.bits.WAKE_ODR = DR_50hz; // Wake up mode output data rate
-    sens_config_3_reg.bits.SLEEP_ODR = DR_50hz; // Sleep mode output data rate
+    sens_config_3_reg.bits.WAKE_ODR = DR_100hz;  // Wake up mode output data rate
+    sens_config_3_reg.bits.SLEEP_ODR = DR_100hz; // Sleep mode output data rate
     fxls8964_write_reg(FXLS8964_SENS_CONFIG3_REG, sens_config_3_reg.data);
 
     // Config register 4
@@ -439,7 +477,6 @@ void fxls8964_init(void)
     // Data ready interrupt enable and boot interrupt disable
     int_en_reg.data = 0;
     int_en_reg.bits.DRDY_EN = 1;
-    int_en_reg.bits.BOOT_DIS = 1;
 	fxls8964_write_reg(FXLS8964_INT_EN_REG, int_en_reg.data);
 
 	// Interrupciones ruteadas a INT1
@@ -499,7 +536,6 @@ void fxls8964_init_freefall(void)
     // Data ready interrupt enable and boot interrupt disable
     int_en_reg.data = 0;
     int_en_reg.bits.DRDY_EN = 1;
-    int_en_reg.bits.BOOT_DIS = 1;
 	fxls8964_write_reg(FXLS8964_INT_EN_REG, int_en_reg.data);
 
 	// Interrupciones ruteadas a INT1
@@ -521,7 +557,7 @@ void fxls8964_init_freefall(void)
 	fxls8964_write_reg(FXLS8964_SDCD_UTHS_MSB_REG, (threshold_register >> 8) & 0xF);
 
 	// Debounce counter
-	fxls8964_write_reg(FXLS8964_SDCD_WT_DBCNT_REG, 10);
+	fxls8964_write_reg(FXLS8964_SDCD_WT_DBCNT_REG, 5);
 
 	// SDCD config 1
 	sdcd_config1_reg.data = 0;
@@ -678,11 +714,9 @@ void PORTC_PORTD_IRQHandler(void)
 		readG  |= reg;
 		readZ = readG;
     }
-    else if(intStatus.bits.SRC_BOOT)
-    {
-    	booted = true;
-    }
-    else if(intStatus.bits.SRC_SDCD_WT)
+
+
+    if(intStatus.bits.SRC_SDCD_WT)
     {
     	sdcdIntSrc.data = fxls8964_read_reg(FXLS8964_SDCD_INT_SRC2_REG);
 
@@ -690,6 +724,12 @@ void PORTC_PORTD_IRQHandler(void)
     	{
         	freeFallFlag = true;
     	}
+    }
+
+
+    if(intStatus.bits.SRC_BOOT)
+    {
+    	booted = true;
     }
 
     PORT_ClearPinsInterruptFlags(INT1_PORT, 1 << INT1_PIN);
